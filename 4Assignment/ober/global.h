@@ -12,9 +12,9 @@
 #define MAX_PASS 200
 #define MAX_CABS 50
 #define MAX_SERVERS 100
-#define MAX_RIDE_TIME 4000	  // maximum ride time of 4s
+#define MAX_RIDE_TIME 40	  // maximum ride time of 4s
 #define MAX_ARRIVAL_TIME 10 // maximum arrival time of customers
-#define MAX_WAIT_TIME 5000 // maximum wait time of 3s
+#define MAX_WAIT_TIME 5     // maximum wait time of 5s
 #define handleerror(msg) \
 do {perror(msg);exit(EXIT_FAILURE);}while(0);
 typedef int ll;
@@ -38,6 +38,7 @@ typedef struct Passenger
 	int ride_time;
 	int cab_type;
 	int payment_status;
+    int cab_num;
 } pss;
 
 typedef struct Server
@@ -56,8 +57,8 @@ pthread_t cb_threads[MAX_CABS];
 pthread_t srvr_threads[MAX_SERVERS];
 pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t mutex_pass;
-pthread_mutex_t mutex_cabs;
+pthread_mutex_t mutex_pass[MAX_PASS];
+pthread_mutex_t mutex_cabs[MAX_CABS];
 pthread_cond_t cond[MAX_PASS];
 
 int Alldone = 0;
@@ -108,10 +109,11 @@ void passenger_init()
 	{
 		passengers[n] = (pss *)malloc(sizeof(pss));
 		passengers[n]->arrival_time = get_random(MAX_ARRIVAL_TIME,1);
-		passengers[n]->cab_type = get_random(1, 1);						// either will pool or will ask for premium cab
+		passengers[n]->cab_type = get_random(20000, 1)/20000;						// either will pool or will ask for premium cab
 		passengers[n]->ride_time = get_random(MAX_RIDE_TIME, 0); 			// random ride time
 		passengers[n]->payment_status = -1;								// NULL payment status, 1 corresponds to ready for payment, 2 corresponds to payment done
 		passengers[n]->max_wait_time = get_random(MAX_WAIT_TIME, 0);
+        passengers[n]->cab_num = -1;
 	}
 }
 
