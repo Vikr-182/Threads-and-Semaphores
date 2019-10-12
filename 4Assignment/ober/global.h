@@ -25,7 +25,7 @@ struct timespec start,end;
 typedef struct Cab
 {
 	int cab_num;
-	int num_pass;
+	int num_pass[2];
 	int cab_type;
 	int ride_time;
 	int status;
@@ -54,6 +54,11 @@ cb *cabss[MAX_CABS];
 pthread_t pss_threads[MAX_PASS];
 pthread_t cb_threads[MAX_CABS];
 pthread_t srvr_threads[MAX_SERVERS];
+pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex_pass;
+pthread_mutex_t mutex_cabs;
+pthread_cond_t cond[MAX_PASS];
 
 int Alldone = 0;
 
@@ -90,7 +95,8 @@ void cab_init()
 		cabss[n] = (cb *)malloc(sizeof(cb));
 		cabss[n]->cab_num = n;
 		cabss[n]->cab_type = 0;   			// empty cab
-		cabss[n]->num_pass = 0;   			// 0 passengers
+		cabss[n]->num_pass[0] = -1;   			// 0 passengers
+		cabss[n]->num_pass[1] = -1;				// 0 passengers
 		cabss[n]->ride_time = -1; 			// NULL ride ride_time
 		cabss[n]->status = 1;	 			// waiting
 	}
@@ -102,7 +108,7 @@ void passenger_init()
 	{
 		passengers[n] = (pss *)malloc(sizeof(pss));
 		passengers[n]->arrival_time = get_random(MAX_ARRIVAL_TIME,1);
-		passengers[n]->cab_type = get_random(2, 1);						// either will pool or will ask for premium cab
+		passengers[n]->cab_type = get_random(1, 1);						// either will pool or will ask for premium cab
 		passengers[n]->ride_time = get_random(MAX_RIDE_TIME, 0); 			// random ride time
 		passengers[n]->payment_status = -1;								// NULL payment status, 1 corresponds to ready for payment, 2 corresponds to payment done
 		passengers[n]->max_wait_time = get_random(MAX_WAIT_TIME, 0);

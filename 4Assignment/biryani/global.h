@@ -8,114 +8,128 @@
 #include <semaphore.h>
 #include <time.h>
 #include <pthread.h>
+typedef long long ll;
 
-#define MAX_PASS 200
-#define MAX_CABS 50
-#define MAX_SERVERS 100
-#define MAX_RIDE_TIME 4000	  // maximum ride time of 4s
-#define MAX_ARRIVAL_TIME 10 // maximum arrival time of customers
-#define MAX_WAIT_TIME 5000 // maximum wait time of 3s
-#define handleerror(msg) \
-do {perror(msg);exit(EXIT_FAILURE);}while(0);
-typedef int ll;
+#define MAX_SLOTS 11
+#define MAX_PREPARATION_TIME 6
+#define MAX_ROBOTS 30
+#define MAX_STUDENTS 100
+#define MAX_TABLES 20
+#define MAX_VESSELS 25
+#define MAX_CAPACITY_TO_FEED 30
+#define MAX_WAITING_TIME 20
+
+
+#define ANSI_RESET "\x1b[0m"
+#define ANSI_BLACK "\x1b[30m"
+#define ANSI_RED "\x1b[31m"
+#define ANSI_GREEN "\x1b[32m"
+#define ANSI_YELLOW "\x1b[33m"
+#define ANSI_BLUE "\x1b[34m"
+#define ANSI_WHITE "\x1b[38m"
+#define ANSI_RED_BG "\x1b[41m"
+#define ANSI_GREEN_BG "\x1b[42m"
+#define ANSI_YELLOW_BG "\x1b[43m"
+#define ANSI_BLUE_BG "\x1b[44m"
+#define ANSI_PURPLE_BG "\x1b[45m"
+#define ANSI_DARKBLUE_BG "\x1b[46m"
+#define ANSI_GREY_BG "\x1b[47m"
+#define ANSI_CLEAR_SCREEN "\e[1;1H\e[2J"
+#define ANSI_RESET_SCREEN "\033\143"
+
 ll N, M, K;
+ll Alldone;
 
-struct timespec start,end;
+pthread_t thread_robots[MAX_ROBOTS];
+pthread_t thread_students[MAX_STUDENTS];
+pthread_t thread_tables[MAX_TABLES];
 
-typedef struct Cab
+pthread_mutex_t lock_tables[MAX_TABLES];
+pthread_mutex_t lock_students[MAX_STUDENTS];
+
+typedef struct Robot
 {
-	int cab_num;
-	int num_pass;
-	int cab_type;
-	int ride_time;
-	int status;
-} cb;
+	ll rob_id;
+	ll num_vessels;
+	ll time_to_cook;
+	ll ready_to_prepare;
+	ll status;
+} rb;
 
-typedef struct Passenger
+typedef struct Table
 {
-	int arrival_time;
-	int max_wait_time;
-	int ride_time;
-	int cab_type;
-	int payment_status;
-} pss;
+	ll table_id;
+	ll slots[10];
+	ll students_eating;
+	ll available_slots;
+	ll capacity_total;
+	ll status;
+} tbl;
 
-typedef struct Server
+typedef struct Student
 {
-	int payment_status;
-	int payment_rider;
-	int payment_of_cab;
-} srvr;
+	ll stud_id;
+	ll table_num;
+	ll time_of_arrival;
+} stud;
 
-pss *passengers[MAX_PASS];
-srvr *servers[MAX_SERVERS];
-cb *cabss[MAX_CABS];
+rb *robots[MAX_ROBOTS];
+tbl *tables[MAX_TABLES];
+stud *students[MAX_STUDENTS];
 
-pthread_t pss_threads[MAX_PASS];
-pthread_t cb_threads[MAX_CABS];
-pthread_t srvr_threads[MAX_SERVERS];
+ll maxormin(ll a,ll b,ll flag)
+{
+	return (flag ? (a>b))
+}
 
-int Alldone = 0;
-
-// semaphores
-sem_t waiting_passenger;
-sem_t available_cab_ride_pool;
-sem_t available_cab_ride_premium;
-sem_t available_servers;
-sem_t ride_done;
-
-// mutex
-sem_t server_lock;
-sem_t cab_lock;
-sem_t passenger_lock ;
-
-ll get_random(ll limit, ll flag) // specifies whether 0 is allowed
+ll get_random(ll limit, ll flag)
 {
 	ll a = rand() % limit;
 	if (a < 0)
 	{
 		a *= -1;
 	}
-	if ((flag & !a))
-	{
-		a += limit / 2;
-	}
+	a += (!flag & !a) * (limit / 2);
 	return a;
 }
 
-void cab_init()
+void robots_init()
 {
-	for (ll n = 0; n < MAX_CABS; n++)
+	for (ll m = 0; m < M; m++)
 	{
-		cabss[n] = (cb *)malloc(sizeof(cb));
-		cabss[n]->cab_num = n;
-		cabss[n]->cab_type = 0;   			// empty cab
-		cabss[n]->num_pass = 0;   			// 0 passengers
-		cabss[n]->ride_time = -1; 			// NULL ride ride_time
-		cabss[n]->status = 1;	 			// waiting
+		robots[m] = (rb *)malloc(sizeof(rb));
+		robots[m]->rob_id = m;
+		robots[m]->num_vessels = -1;
+		robots[m]->time_to_cook = get_random(MAX_PREPARATION_TIME, 0);
+		robots[m]->ready_to_prepare = -1; // this robot is not ready to prepare
+		robots[m]->status = -1;			  // waiting
 	}
 }
 
-void passenger_init()
+void tables_init()
 {
-	for (ll n = 0; n < MAX_PASS; n++)
+	for (ll n = 0; n < N; n++)
 	{
-		passengers[n] = (pss *)malloc(sizeof(pss));
-		passengers[n]->arrival_time = get_random(MAX_ARRIVAL_TIME,1);
-		passengers[n]->cab_type = get_random(2, 1);						// either will pool or will ask for premium cab
-		passengers[n]->ride_time = get_random(MAX_RIDE_TIME, 0); 			// random ride time
-		passengers[n]->payment_status = -1;								// NULL payment status, 1 corresponds to ready for payment, 2 corresponds to payment done
-		passengers[n]->max_wait_time = get_random(MAX_WAIT_TIME, 0);
+		tables[n] = (tbl *)malloc(sizeof(tables));
+		tables[n]->table_id = n;
+		tables[n]->capacity_total = get_random(MAX_CAPACITY_TO_FEED, 0);
+		tables[n]->available_slots = tables[n]->capacity_total;
+		tables[n]->status = 1;				// ready to be filled upon
+		for (ll i = 0; i < 10; i++)
+		{
+			tables[n]->slots[i] = 0;		// slots currently free
+		}
+		
 	}
 }
 
-void server_init()
+void students_init()
 {
-	for (ll n = 0; n < MAX_SERVERS; n++)
+	for (ll k = 0; k < K; k++)
 	{
-		servers[n] = (srvr *)malloc(sizeof(srvr));
-		servers[n]->payment_status = 0; 	// not accepted any payment_status
-		servers[n]->payment_rider = -1;
-		servers[n]->payment_of_cab = -1;
+		students[k] = (stud *)malloc(sizeof(stud));
+		students[k]->stud_id = k;
+		students[k]->table_num = -1;
+		students[k]->time_of_arrival = get_random(MAX_WAITING_TIME,1);
 	}
 }
