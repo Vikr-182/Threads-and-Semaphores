@@ -2,8 +2,14 @@
 
 void quicksort(ll a[],ll left,ll right)
 {
+    if(left>=right)
+    {
+        return ;
+    }
     ll size = (right-left+1);
     ll i;
+
+    
     if(size<=5)
     {
         insertion_sort(a+left,size);
@@ -11,11 +17,11 @@ void quicksort(ll a[],ll left,ll right)
     }
 
     // find the median in O(n) time
-    ll med = kth_smallest(a,left,right,size/2);
-
+    ll med = kthSmallest(a,left,right,size/2);
+    
     // partition the array around the median
-    ll ind = partition(a,left,size,med);
-
+    ll ind = partition(a,left,right,med);
+    
     pid_t child_left,child_right;
     child_left = fork();
     if(child_left<0)
@@ -38,9 +44,12 @@ void quicksort(ll a[],ll left,ll right)
         }
         else if(!child_right)
         {
-            quicksort(a,left+size/2,right);
+            quicksort(a,ind+1,right);
             exit(1);
         }
+        int status;
+        waitpid(child_left,&status,0);
+        waitpid(child_right,&status,0);
     }
 }
 
@@ -50,15 +59,16 @@ int main(int argc,char argv[])
     scanf("%d",&N);
     key_t key = IPC_PRIVATE;
     ll *Array;
+    ll *shm_array;
     size_t size_shm = sizeof(int)*N;
-    int shmid =  shmget(key,size_shm,IPC_CREAT|0666);
-    if(shmid<0)
+    int shmid;
+    if((shmid =  shmget(key,size_shm,IPC_CREAT|0666))==-1)
     {
         perror("shm id error\n");
         exit(0);
     }
     
-    if((Array = shmat(shmid,NULL,0)) == NULL)
+    if((shm_array = shmat(shmid,NULL,0)) == (int *)-1)
     {
         perror("Shm error\n");
         exit(0);
@@ -66,13 +76,20 @@ int main(int argc,char argv[])
     for (ll n = 0; n < N; n++)
     {
         scanf("%d",&Array[n]);
+        shm_array[n] = Array[n];
     }
-    quicksort(Array,0,N-1);
+    clock_t start = clock();
+    // printf("Starting the sorting\n");
+    bar();
+    quicksort(shm_array,0,N-1);
     for(int i = 0; i < N; i++)
     {
-        printf("%d ",Array[i]);
+        printf("%d ",shm_array[i]);
     }
     printf("\n");
-
+    printf("Time taken:\t %f\n",(double)(clock()-start)/(CLOCKS_PER_SEC));
+    bar();
+    // printf("Finished sorting\n");
+    
     return 0;
 }

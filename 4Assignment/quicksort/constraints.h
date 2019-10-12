@@ -7,9 +7,36 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ipc.h>
+#include <limits.h>
 #include <sys/shm.h>
 
+#define MAX_THREADS 4
+pthread_t threads[MAX_THREADS];
+
 typedef int ll;
+
+ll medians_array[3];
+ll AArray[2000000];
+ll pura;
+  
+
+void bar()
+{
+    for (ll i = 0; i < 20; i++)
+    {
+        printf("-");
+    }
+    printf("\n");
+}
+
+void display(ll arr[],ll left,ll r)
+{
+    for (ll l = left; l <= r; l++)
+    {
+        printf("%d ",arr[l]);
+    }
+    printf("\n");
+}
 
 void swap(ll *a,ll *b)
 {
@@ -57,23 +84,11 @@ ll partition(ll arr[], ll l, ll r, ll x)
 
 ll small_median(ll arr[],ll size)
 {
-    printf("called\n");
-    for(int m = 0; m < size; m++)
-    {
-        printf("%d ",arr[m]);
-    }
-    printf("\n");
     insertion_sort(arr,size);
-    printf("resuled\n");
-    for(int m = 0; m < size; m++)
-    {
-        printf("%d ",arr[m]);
-    }
-    printf("\n");
     return arr[size/2];
 }
 
-ll kth_smallest(ll arr[],ll left,ll right,ll k)
+ll kthSmallest(ll arr[],ll left,ll right,ll k)
 {
     ll size = right-left+1;
     if(k <= 0 || k > size)
@@ -81,7 +96,6 @@ ll kth_smallest(ll arr[],ll left,ll right,ll k)
         return -1e7;
     }
     ll median[(size)/5+!(!(size%5))];
-    printf("Hi %d %d %d\n",left,right,k);
     ll ind = 0;
     for(int i = 0; i < size/5; i++)
     {
@@ -98,26 +112,20 @@ ll kth_smallest(ll arr[],ll left,ll right,ll k)
     }
     else
     {
-        median_of_medians = kth_smallest(median,0,ind-1,ind/2);
+        median_of_medians = kthSmallest(median,0,ind-1,ind/2);
     }
     ll position = partition(arr,left,right,median_of_medians);
 
-    printf("called %d %d %d\n",left,right,k);
-    for(int i = 0; i < size; i++)
-    {
-        printf("%d ",arr[left+i]);
-    }
-    printf("\n");
-    if(position==(size/2))
+    if((position-left)==(k-1))
     {
         return arr[position];
     }
     else if(position-left > k-1)
     {
-        return kth_smallest(arr,left,position-1,k);
+        return kthSmallest(arr,left,position-1,k);
     }
     else
     {
-        return kth_smallest(arr,position+1,right,k-position+left-1);
+        return kthSmallest(arr,position+1,right,k-position+left-1);
     }
 }
