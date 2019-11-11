@@ -1,25 +1,5 @@
 #include "constraints.h"
 
-// void quicksort(ll a[],ll left,ll right)
-// {
-//     if(left>=right)
-//     {
-//         return;
-//     }
-//     ll size = (right-left+1);
-//     ll i;
-    
-//     // find the median in O(n) time
-//     ll med = kth_smallest(a,left,right,size/2);
-
-//     // partition the array around the median
-//     ll ind = partition(a,left,size,med);
-//     printf("%d\n",ind);
-//     quicksort(a,left,ind-1);
-//     quicksort(a,ind+1,right);
-//     return;
-// }
-
 void sort_quickly(int A[], int left, int right) 
 { 
    if(left >= right){ return ;}
